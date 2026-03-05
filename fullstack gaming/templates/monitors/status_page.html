@@ -1,0 +1,179 @@
+{% extends "base.html" %}
+{% block title %}System Status — UptimeWatch{% endblock %}
+
+{% block content %}
+<div class="status-page">
+
+  <!-- Hero Banner -->
+  <div class="status-hero {% if all_operational %}status-hero--ok{% else %}status-hero--incident{% endif %}">
+    <div class="status-hero__icon">
+      <span class="material-icons-round">
+        {% if all_operational %}check_circle{% else %}warning{% endif %}
+      </span>
+    </div>
+    <div class="status-hero__text">
+      <h1>{% if all_operational %}All Systems Operational{% else %}Some Systems Experiencing Issues{% endif %}</h1>
+      <p>{{ total_monitors }} service{% if total_monitors != 1 %}s{% endif %} monitored · Updated every 60 seconds</p>
+    </div>
+  </div>
+
+  <!-- Services List -->
+  <div class="card status-card">
+    <div class="card__header">
+      <h2 class="card__title">
+        <span class="material-icons-round">dns</span>
+        Services
+      </h2>
+      <span class="badge badge--neutral">{{ total_monitors }} total</span>
+    </div>
+    <div class="card__body card__body--no-pad">
+      {% if monitors_data %}
+      <div class="status-services">
+        {% for item in monitors_data %}
+        <div class="status-service-row">
+          <div class="status-service-row__left">
+            <span class="status-dot status-dot--{{ item.monitor.status }}"></span>
+            <div class="status-service-row__info">
+              <div class="status-service-row__name">{{ item.monitor.name }}</div>
+              <div class="status-service-row__url">{{ item.monitor.url }}</div>
+            </div>
+          </div>
+          <div class="status-service-row__metrics">
+            <div class="status-metric">
+              <span class="status-metric__value">{{ item.uptime_24h }}%</span>
+              <span class="status-metric__label">24h</span>
+            </div>
+            <div class="status-metric">
+              <span class="status-metric__value">{{ item.uptime_7d }}%</span>
+              <span class="status-metric__label">7d</span>
+            </div>
+            <div class="status-metric">
+              <span class="status-metric__value">{{ item.uptime_30d }}%</span>
+              <span class="status-metric__label">30d</span>
+            </div>
+            <div class="status-service-row__badge">
+              <span class="status-badge status-badge--{{ item.monitor.status }}">
+                <span class="status-dot"></span>
+                {{ item.monitor.get_status_display }}
+              </span>
+            </div>
+          </div>
+        </div>
+        <!-- 90-day uptime bar -->
+        <div class="uptime-history" title="{{ item.uptime_30d }}% uptime over 30 days">
+          <div class="uptime-history__bar">
+            <div class="uptime-history__fill" style="width: {{ item.uptime_30d }}%;
+              background: {% if item.uptime_30d >= 99 %}#66bb6a{% elif item.uptime_30d >= 95 %}#ffa726{% else %}#ef5350{% endif %};">
+            </div>
+          </div>
+          <span class="uptime-history__label">{{ item.uptime_30d }}% uptime</span>
+        </div>
+        {% endfor %}
+      </div>
+      {% else %}
+      <div class="empty-state">
+        <span class="material-icons-round">monitor_heart</span>
+        <p>No services are being monitored yet.</p>
+      </div>
+      {% endif %}
+    </div>
+  </div>
+
+  <!-- Incident History -->
+  <div class="card status-card">
+    <div class="card__header">
+      <h2 class="card__title">
+        <span class="material-icons-round">history</span>
+        Incident History
+        <span class="card__title-sub">Last 90 days</span>
+      </h2>
+    </div>
+    <div class="card__body">
+      {% if incidents %}
+      <div class="incident-timeline">
+        {% for incident in incidents %}
+        <div class="timeline-item {% if not incident.is_resolved %}timeline-item--active{% endif %}">
+          <div class="timeline-item__dot">
+            <span class="material-icons-round">
+              {% if incident.is_resolved %}check_circle{% else %}error{% endif %}
+            </span>
+          </div>
+          <div class="timeline-item__content">
+            <div class="timeline-item__header">
+              <strong>{{ incident.monitor.name }}</strong>
+              <span class="badge {% if incident.is_resolved %}badge--success{% else %}badge--error{% endif %}">
+                {% if incident.is_resolved %}Resolved{% else %}Ongoing{% endif %}
+              </span>
+            </div>
+            <div class="timeline-item__cause">{{ incident.cause|default:"Service unavailable" }}</div>
+            <div class="timeline-item__time">
+              <span class="material-icons-round" style="font-size:14px;vertical-align:middle;">schedule</span>
+              Started: {{ incident.started_at|date:"N j, Y H:i" }} UTC
+              {% if incident.resolved_at %}
+              · Resolved: {{ incident.resolved_at|date:"N j, Y H:i" }} UTC
+              {% endif %}
+            </div>
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+      {% else %}
+      <div class="empty-state empty-state--sm">
+        <span class="material-icons-round">celebration</span>
+        <h3>No incidents in the last 90 days!</h3>
+        <p>All systems have been running smoothly.</p>
+      </div>
+      {% endif %}
+    </div>
+  </div>
+
+  <div class="status-footer">
+    <p>Powered by <strong>UptimeWatch</strong> · Data refreshes automatically every 60 seconds</p>
+    <p class="status-footer__time">Last updated: <span id="lastUpdated">just now</span></p>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+// Auto-refresh status data
+async function refreshStatus() {
+  try {
+    const res = await fetch('/api/status/');
+    const data = await res.json();
+
+    data.monitors.forEach(m => {
+      // Update status dots and badges if elements exist
+      const rows = document.querySelectorAll('.status-service-row');
+      rows.forEach(row => {
+        const nameEl = row.querySelector('.status-service-row__name');
+        if (nameEl && nameEl.textContent.trim() === m.name) {
+          const dot = row.querySelector('.status-dot');
+          if (dot) {
+            dot.className = `status-dot status-dot--${m.status}`;
+          }
+          const badge = row.querySelector('.status-badge');
+          if (badge) {
+            badge.className = `status-badge status-badge--${m.status}`;
+            badge.innerHTML = `<span class="status-dot"></span>${m.status.charAt(0).toUpperCase() + m.status.slice(1)}`;
+          }
+        }
+      });
+    });
+
+    document.getElementById('lastUpdated').textContent = new Date().toLocaleTimeString();
+  } catch (e) {
+    console.error('Status refresh failed:', e);
+  }
+}
+
+// Update "last updated" time
+setInterval(refreshStatus, 60000);
+
+// Show relative time
+const lastUpdatedEl = document.getElementById('lastUpdated');
+if (lastUpdatedEl) {
+  lastUpdatedEl.textContent = new Date().toLocaleTimeString();
+}
+</script>
+{% endblock %}

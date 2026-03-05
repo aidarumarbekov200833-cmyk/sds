@@ -1,0 +1,478 @@
+{% extends "base.html" %}
+{% block title %}{{ monitor.name }} — UptimeWatch{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div class="page-header__back">
+    <a href="{% url 'dashboard' %}" class="back-link">
+      <span class="material-icons-round">arrow_back</span>
+      Dashboard
+    </a>
+    <h1 class="page-title">{{ monitor.name }}</h1>
+    <a href="{{ monitor.url }}" class="monitor-url-link" target="_blank" rel="noopener">
+      {{ monitor.url }}
+      <span class="material-icons-round" style="font-size:14px;">open_in_new</span>
+    </a>
+  </div>
+  <div class="page-header__actions">
+    <button class="btn btn--outline check-now-btn" data-id="{{ monitor.id }}">
+      <span class="material-icons-round">refresh</span>
+      Check Now
+    </button>
+    <a href="{% url 'monitor_edit' monitor.pk %}" class="btn btn--outline">
+      <span class="material-icons-round">edit</span>
+      Edit
+    </a>
+    <a href="{% url 'monitor_delete' monitor.pk %}" class="btn btn--danger-outline">
+      <span class="material-icons-round">delete</span>
+      Delete
+    </a>
+  </div>
+</div>
+
+<!-- ── Status Banner ──────────────────────────────────────────────────── -->
+<div class="status-banner status-banner--{{ monitor.status }}">
+  <div class="status-banner__left">
+    <span class="status-dot status-dot--lg"></span>
+    <div>
+      <div class="status-banner__title">{{ monitor.get_status_display }}</div>
+      <div class="status-banner__sub">
+        {% if monitor.last_checked %}
+          Last checked {{ monitor.last_checked|timesince }} ago
+        {% else %}
+          Not checked yet
+        {% endif %}
+      </div>
+    </div>
+  </div>
+  <div class="status-banner__right">
+    {% if monitor.last_response_time %}
+    <div class="status-banner__metric">
+      <span class="status-banner__metric-value">{{ monitor.last_response_time|floatformat:0 }}ms</span>
+      <span class="status-banner__metric-label">Response Time</span>
+    </div>
+    {% endif %}
+  </div>
+</div>
+
+<!-- ── Uptime Stats ────────────────────────────────────────────────────── -->
+<div class="stats-grid stats-grid--4">
+  <div class="stat-card">
+    <div class="stat-card__icon stat-card__icon--indigo">
+      <span class="material-icons-round">today</span>
+    </div>
+    <div class="stat-card__body">
+      <div class="stat-card__value">{{ monitor.uptime_24h }}%</div>
+      <div class="stat-card__label">Uptime 24h</div>
+    </div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-card__icon stat-card__icon--indigo">
+      <span class="material-icons-round">date_range</span>
+    </div>
+    <div class="stat-card__body">
+      <div class="stat-card__value">{{ monitor.uptime_7d }}%</div>
+      <div class="stat-card__label">Uptime 7 Days</div>
+    </div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-card__icon stat-card__icon--indigo">
+      <span class="material-icons-round">calendar_month</span>
+    </div>
+    <div class="stat-card__body">
+      <div class="stat-card__value">{{ monitor.uptime_30d }}%</div>
+      <div class="stat-card__label">Uptime 30 Days</div>
+    </div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-card__icon stat-card__icon--warning">
+      <span class="material-icons-round">speed</span>
+    </div>
+    <div class="stat-card__body">
+      <div class="stat-card__value">
+        {% if monitor.avg_response_time_24h %}{{ monitor.avg_response_time_24h|floatformat:0 }}ms{% else %}—{% endif %}
+      </div>
+      <div class="stat-card__label">Avg Response 24h</div>
+    </div>
+  </div>
+</div>
+
+<!-- ── Charts ─────────────────────────────────────────────────────────── -->
+<div class="charts-grid">
+  <!-- Response Time Chart -->
+  <div class="card chart-card">
+    <div class="card__header">
+      <h2 class="card__title">
+        <span class="material-icons-round">show_chart</span>
+        Response Time
+      </h2>
+      <div class="chart-time-selector">
+        <button class="chip chip--active" data-hours="24">24h</button>
+        <button class="chip" data-hours="48">48h</button>
+        <button class="chip" data-hours="168">7d</button>
+      </div>
+    </div>
+    <div class="chart-skeleton" id="responseTimeSkeleton">
+      <div class="skeleton skeleton--chart"></div>
+    </div>
+    <div id="responseTimeChart" style="display:none;"></div>
+  </div>
+
+  <!-- Uptime Bar Chart -->
+  <div class="card chart-card">
+    <div class="card__header">
+      <h2 class="card__title">
+        <span class="material-icons-round">bar_chart</span>
+        Daily Uptime
+      </h2>
+      <div class="chart-time-selector">
+        <button class="chip chip--active" data-days="30">30d</button>
+        <button class="chip" data-days="14">14d</button>
+        <button class="chip" data-days="7">7d</button>
+      </div>
+    </div>
+    <div class="chart-skeleton" id="uptimeSkeleton">
+      <div class="skeleton skeleton--chart"></div>
+    </div>
+    <div id="uptimeChart" style="display:none;"></div>
+  </div>
+</div>
+
+<!-- ── Alerts & Incidents ─────────────────────────────────────────────── -->
+<div class="two-col-grid">
+  <!-- Alerts -->
+  <div class="card">
+    <div class="card__header">
+      <h2 class="card__title">
+        <span class="material-icons-round">notifications</span>
+        Alert Channels
+      </h2>
+      <a href="{% url 'alert_create' monitor.pk %}" class="btn btn--sm btn--primary">
+        <span class="material-icons-round">add</span>
+        Add Alert
+      </a>
+    </div>
+    <div class="card__body">
+      {% if alerts %}
+      <div class="alert-list">
+        {% for alert in alerts %}
+        <div class="alert-item">
+          <div class="alert-item__icon">
+            <span class="material-icons-round">
+              {% if alert.alert_type == 'telegram' %}telegram{% else %}email{% endif %}
+            </span>
+          </div>
+          <div class="alert-item__info">
+            <div class="alert-item__target">{{ alert.target }}</div>
+            <div class="alert-item__meta">
+              {{ alert.get_alert_type_display }}
+              <span class="badge badge--{{ alert.status }}">{{ alert.get_status_display }}</span>
+            </div>
+            {% if alert.last_triggered %}
+            <div class="alert-item__last">Last triggered: {{ alert.last_triggered|timesince }} ago</div>
+            {% endif %}
+          </div>
+          <div class="alert-item__actions">
+            <span class="status-dot {% if alert.is_enabled %}status-dot--online{% else %}status-dot--offline{% endif %}"></span>
+            <a href="{% url 'alert_delete' alert.pk %}" class="icon-btn icon-btn--sm icon-btn--danger">
+              <span class="material-icons-round">delete</span>
+            </a>
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+      {% else %}
+      <div class="empty-state empty-state--sm">
+        <span class="material-icons-round">notifications_off</span>
+        <p>No alert channels configured.</p>
+        <a href="{% url 'alert_create' monitor.pk %}" class="btn btn--sm btn--primary">Add Alert</a>
+      </div>
+      {% endif %}
+    </div>
+  </div>
+
+  <!-- Incidents -->
+  <div class="card">
+    <div class="card__header">
+      <h2 class="card__title">
+        <span class="material-icons-round">report_problem</span>
+        Recent Incidents
+      </h2>
+    </div>
+    <div class="card__body">
+      {% if incidents %}
+      <div class="incident-list">
+        {% for incident in incidents %}
+        <div class="incident-item {% if not incident.is_resolved %}incident-item--active{% endif %}">
+          <div class="incident-item__status">
+            <span class="material-icons-round">
+              {% if incident.is_resolved %}check_circle{% else %}error{% endif %}
+            </span>
+          </div>
+          <div class="incident-item__info">
+            <div class="incident-item__title">
+              {% if incident.is_resolved %}Resolved{% else %}Ongoing Outage{% endif %}
+            </div>
+            <div class="incident-item__cause">{{ incident.cause|default:"Unknown cause" }}</div>
+            <div class="incident-item__time">
+              Started: {{ incident.started_at|date:"M d, H:i" }}
+              {% if incident.resolved_at %}
+              · Resolved: {{ incident.resolved_at|date:"M d, H:i" }}
+              {% endif %}
+            </div>
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+      {% else %}
+      <div class="empty-state empty-state--sm">
+        <span class="material-icons-round">check_circle</span>
+        <p>No incidents recorded. Great job!</p>
+      </div>
+      {% endif %}
+    </div>
+  </div>
+</div>
+
+<!-- ── Recent Check Logs ───────────────────────────────────────────────── -->
+<div class="card">
+  <div class="card__header">
+    <h2 class="card__title">
+      <span class="material-icons-round">history</span>
+      Recent Check Logs
+    </h2>
+    <span class="badge badge--neutral" id="logCount">Loading…</span>
+  </div>
+  <div class="card__body card__body--no-pad">
+    <div class="table-container">
+      <table class="data-table" id="logsTable">
+        <thead>
+          <tr>
+            <th>Status</th>
+            <th>HTTP Code</th>
+            <th>Response Time</th>
+            <th>Keyword</th>
+            <th>Error</th>
+            <th>Checked At</th>
+          </tr>
+        </thead>
+        <tbody id="logsTableBody">
+          <tr><td colspan="6" class="table-loading">
+            <div class="skeleton skeleton--text"></div>
+          </td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+const MONITOR_ID = {{ monitor.id }};
+const CSRF_TOKEN = '{{ csrf_token }}';
+
+// ── Response Time Chart ───────────────────────────────────────────────────
+let responseChart = null;
+
+async function loadResponseTimeChart(hours = 24) {
+  document.getElementById('responseTimeSkeleton').style.display = '';
+  document.getElementById('responseTimeChart').style.display = 'none';
+
+  try {
+    const res = await fetch(`/api/monitors/${MONITOR_ID}/chart/response-time/?hours=${hours}`);
+    const data = await res.json();
+
+    document.getElementById('responseTimeSkeleton').style.display = 'none';
+    document.getElementById('responseTimeChart').style.display = '';
+
+    const options = {
+      series: [{ name: 'Response Time (ms)', data: data.data }],
+      chart: {
+        type: 'area',
+        height: 260,
+        toolbar: { show: false },
+        animations: { enabled: true, easing: 'easeinout', speed: 600 },
+        background: 'transparent',
+      },
+      colors: ['#5c6bc0'],
+      fill: {
+        type: 'gradient',
+        gradient: {
+          shadeIntensity: 1,
+          opacityFrom: 0.35,
+          opacityTo: 0.02,
+          stops: [0, 100],
+        },
+      },
+      stroke: { curve: 'smooth', width: 2 },
+      xaxis: {
+        categories: data.labels,
+        labels: { style: { colors: '#78909c', fontSize: '11px' }, rotate: -30 },
+        axisBorder: { show: false },
+        axisTicks: { show: false },
+      },
+      yaxis: {
+        labels: {
+          style: { colors: '#78909c', fontSize: '11px' },
+          formatter: v => Math.round(v) + 'ms',
+        },
+      },
+      grid: { borderColor: '#eceff1', strokeDashArray: 4 },
+      tooltip: {
+        y: { formatter: v => v + ' ms' },
+        theme: 'light',
+      },
+      dataLabels: { enabled: false },
+      markers: { size: 0 },
+    };
+
+    if (responseChart) { responseChart.destroy(); }
+    responseChart = new ApexCharts(document.getElementById('responseTimeChart'), options);
+    responseChart.render();
+  } catch (e) {
+    console.error('Chart load failed:', e);
+    document.getElementById('responseTimeSkeleton').innerHTML = '<p style="color:#ef5350;padding:1rem;">Failed to load chart data.</p>';
+  }
+}
+
+// ── Uptime Chart ──────────────────────────────────────────────────────────
+let uptimeChart = null;
+
+async function loadUptimeChart(days = 30) {
+  document.getElementById('uptimeSkeleton').style.display = '';
+  document.getElementById('uptimeChart').style.display = 'none';
+
+  try {
+    const res = await fetch(`/api/monitors/${MONITOR_ID}/chart/uptime/?days=${days}`);
+    const data = await res.json();
+
+    document.getElementById('uptimeSkeleton').style.display = 'none';
+    document.getElementById('uptimeChart').style.display = '';
+
+    const colors = data.data.map(v => v >= 99 ? '#66bb6a' : v >= 95 ? '#ffa726' : '#ef5350');
+
+    const options = {
+      series: [{ name: 'Uptime %', data: data.data }],
+      chart: {
+        type: 'bar',
+        height: 260,
+        toolbar: { show: false },
+        animations: { enabled: true, easing: 'easeinout', speed: 600 },
+        background: 'transparent',
+      },
+      colors: colors,
+      plotOptions: {
+        bar: {
+          borderRadius: 4,
+          distributed: true,
+          columnWidth: '70%',
+        },
+      },
+      xaxis: {
+        categories: data.labels,
+        labels: { style: { colors: '#78909c', fontSize: '10px' }, rotate: -45 },
+        axisBorder: { show: false },
+        axisTicks: { show: false },
+      },
+      yaxis: {
+        min: 0,
+        max: 100,
+        labels: {
+          style: { colors: '#78909c', fontSize: '11px' },
+          formatter: v => v + '%',
+        },
+      },
+      grid: { borderColor: '#eceff1', strokeDashArray: 4 },
+      tooltip: { y: { formatter: v => v + '%' }, theme: 'light' },
+      dataLabels: { enabled: false },
+      legend: { show: false },
+    };
+
+    if (uptimeChart) { uptimeChart.destroy(); }
+    uptimeChart = new ApexCharts(document.getElementById('uptimeChart'), options);
+    uptimeChart.render();
+  } catch (e) {
+    console.error('Uptime chart failed:', e);
+  }
+}
+
+// ── Load Check Logs ───────────────────────────────────────────────────────
+async function loadLogs() {
+  try {
+    const res = await fetch(`/api/monitors/${MONITOR_ID}/logs/?hours=24`);
+    const logs = await res.json();
+    const tbody = document.getElementById('logsTableBody');
+    document.getElementById('logCount').textContent = logs.length + ' entries';
+
+    if (!logs.length) {
+      tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:#90a4ae;padding:2rem;">No logs yet</td></tr>';
+      return;
+    }
+
+    tbody.innerHTML = logs.slice(0, 50).map(log => `
+      <tr class="${log.is_up ? '' : 'row--error'}">
+        <td>
+          <span class="status-badge status-badge--${log.is_up ? 'online' : 'offline'}">
+            <span class="status-dot"></span>
+            ${log.is_up ? 'Up' : 'Down'}
+          </span>
+        </td>
+        <td><code class="code-badge">${log.status_code || '—'}</code></td>
+        <td>${log.response_time ? Math.round(log.response_time) + ' ms' : '—'}</td>
+        <td>${log.keyword_found === null ? '—' : log.keyword_found ? '✓' : '✗'}</td>
+        <td class="error-cell">${log.error_message || '—'}</td>
+        <td class="time-cell">${new Date(log.checked_at).toLocaleString()}</td>
+      </tr>
+    `).join('');
+  } catch (e) {
+    console.error('Failed to load logs:', e);
+  }
+}
+
+// ── Check Now ─────────────────────────────────────────────────────────────
+document.querySelector('.check-now-btn').addEventListener('click', async () => {
+  const btn = document.querySelector('.check-now-btn');
+  btn.disabled = true;
+  btn.querySelector('.material-icons-round').classList.add('spin');
+  try {
+    await fetch(`/api/monitors/${MONITOR_ID}/check-now/`, {
+      method: 'POST',
+      headers: { 'X-CSRFToken': CSRF_TOKEN, 'Content-Type': 'application/json' },
+    });
+    showToast('Check queued!', 'success');
+    setTimeout(() => { loadLogs(); loadResponseTimeChart(); }, 5000);
+  } catch (e) {
+    showToast('Failed to queue check', 'error');
+  } finally {
+    setTimeout(() => {
+      btn.disabled = false;
+      btn.querySelector('.material-icons-round').classList.remove('spin');
+    }, 2000);
+  }
+});
+
+// ── Chart time selectors ──────────────────────────────────────────────────
+document.querySelectorAll('.chart-time-selector .chip[data-hours]').forEach(btn => {
+  btn.addEventListener('click', () => {
+    btn.closest('.chart-time-selector').querySelectorAll('.chip').forEach(c => c.classList.remove('chip--active'));
+    btn.classList.add('chip--active');
+    loadResponseTimeChart(parseInt(btn.dataset.hours));
+  });
+});
+
+document.querySelectorAll('.chart-time-selector .chip[data-days]').forEach(btn => {
+  btn.addEventListener('click', () => {
+    btn.closest('.chart-time-selector').querySelectorAll('.chip').forEach(c => c.classList.remove('chip--active'));
+    btn.classList.add('chip--active');
+    loadUptimeChart(parseInt(btn.dataset.days));
+  });
+});
+
+// ── Init ──────────────────────────────────────────────────────────────────
+loadResponseTimeChart(24);
+loadUptimeChart(30);
+loadLogs();
+setInterval(loadLogs, 60000);
+</script>
+{% endblock %}

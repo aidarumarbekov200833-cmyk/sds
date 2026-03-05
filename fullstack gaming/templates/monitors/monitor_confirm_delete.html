@@ -1,0 +1,52 @@
+{% extends "base.html" %}
+{% block title %}Delete Monitor — UptimeWatch{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div class="page-header__back">
+    <a href="{% url 'monitor_detail' monitor.pk %}" class="back-link">
+      <span class="material-icons-round">arrow_back</span>
+      {{ monitor.name }}
+    </a>
+    <h1 class="page-title">Delete Monitor</h1>
+  </div>
+</div>
+
+<div class="form-container form-container--sm">
+  <div class="card card--danger">
+    <div class="card__header">
+      <h2 class="card__title card__title--danger">
+        <span class="material-icons-round">warning</span>
+        Confirm Deletion
+      </h2>
+    </div>
+    <div class="card__body">
+      <div class="danger-zone">
+        <p>You are about to permanently delete the monitor:</p>
+        <div class="danger-zone__target">
+          <strong>{{ monitor.name }}</strong>
+          <span class="monitor-url-link">{{ monitor.url }}</span>
+        </div>
+        <p class="danger-zone__warning">
+          <span class="material-icons-round">error_outline</span>
+          This action cannot be undone. All check logs, alerts, and incident history for this monitor will be permanently deleted.
+        </p>
+      </div>
+
+      <div class="form-actions">
+        <a href="{% url 'monitor_detail' monitor.pk %}" class="btn btn--outline">
+          <span class="material-icons-round">cancel</span>
+          Cancel
+        </a>
+        <form method="post" style="display:inline;">
+          {% csrf_token %}
+          <button type="submit" class="btn btn--danger">
+            <span class="material-icons-round">delete_forever</span>
+            Yes, Delete Monitor
+          </button>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

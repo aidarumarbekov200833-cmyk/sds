@@ -1,0 +1,324 @@
+{% extends "base.html" %}
+{% block title %}Dashboard — UptimeWatch{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div>
+    <h1 class="page-title">Dashboard</h1>
+    <p class="page-subtitle">Real-time monitoring overview</p>
+  </div>
+  <a href="{% url 'monitor_create' %}" class="btn btn--primary">
+    <span class="material-icons-round">add</span>
+    Add Monitor
+  </a>
+</div>
+
+<!-- ── Stats Cards ─────────────────────────────────────────────────────── -->
+<div class="stats-grid" id="statsGrid">
+  <div class="stat-card">
+    <div class="stat-card__icon stat-card__icon--indigo">
+      <span class="material-icons-round">monitor</span>
+    </div>
+    <div class="stat-card__body">
+      <div class="stat-card__value" id="stat-total">
+        <div class="skeleton skeleton--text"></div>
+      </div>
+      <div class="stat-card__label">Total Monitors</div>
+    </div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-card__icon stat-card__icon--success">
+      <span class="material-icons-round">check_circle</span>
+    </div>
+    <div class="stat-card__body">
+      <div class="stat-card__value" id="stat-online">
+        <div class="skeleton skeleton--text"></div>
+      </div>
+      <div class="stat-card__label">Online</div>
+    </div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-card__icon stat-card__icon--error">
+      <span class="material-icons-round">error_outline</span>
+    </div>
+    <div class="stat-card__body">
+      <div class="stat-card__value" id="stat-offline">
+        <div class="skeleton skeleton--text"></div>
+      </div>
+      <div class="stat-card__label">Offline</div>
+    </div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-card__icon stat-card__icon--warning">
+      <span class="material-icons-round">speed</span>
+    </div>
+    <div class="stat-card__body">
+      <div class="stat-card__value" id="stat-slow">
+        <div class="skeleton skeleton--text"></div>
+      </div>
+      <div class="stat-card__label">Slow</div>
+    </div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-card__icon stat-card__icon--indigo">
+      <span class="material-icons-round">trending_up</span>
+    </div>
+    <div class="stat-card__body">
+      <div class="stat-card__value" id="stat-uptime">
+        <div class="skeleton skeleton--text"></div>
+      </div>
+      <div class="stat-card__label">Avg Uptime 24h</div>
+    </div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-card__icon stat-card__icon--error">
+      <span class="material-icons-round">warning_amber</span>
+    </div>
+    <div class="stat-card__body">
+      <div class="stat-card__value" id="stat-incidents">
+        <div class="skeleton skeleton--text"></div>
+      </div>
+      <div class="stat-card__label">Active Incidents</div>
+    </div>
+  </div>
+</div>
+
+<!-- ── Monitor Cards ───────────────────────────────────────────────────── -->
+<div class="section-header">
+  <h2 class="section-title">Monitors</h2>
+  <div class="section-actions">
+    <div class="search-box">
+      <span class="material-icons-round">search</span>
+      <input type="text" id="monitorSearch" placeholder="Search monitors…" class="search-input" />
+    </div>
+    <div class="filter-chips" id="filterChips">
+      <button class="chip chip--active" data-filter="all">All</button>
+      <button class="chip" data-filter="online">Online</button>
+      <button class="chip" data-filter="offline">Offline</button>
+      <button class="chip" data-filter="slow">Slow</button>
+    </div>
+  </div>
+</div>
+
+{% if not monitors %}
+<div class="empty-state">
+  <span class="material-icons-round empty-state__icon">monitor_heart</span>
+  <h3>No monitors yet</h3>
+  <p>Add your first monitor to start tracking uptime and response times.</p>
+  <a href="{% url 'monitor_create' %}" class="btn btn--primary">
+    <span class="material-icons-round">add</span>
+    Add Your First Monitor
+  </a>
+</div>
+{% else %}
+<div class="monitors-grid" id="monitorsGrid">
+  {% for monitor in monitors %}
+  <div class="monitor-card" data-status="{{ monitor.status }}" data-name="{{ monitor.name|lower }}" data-id="{{ monitor.id }}">
+    <div class="monitor-card__header">
+      <div class="monitor-card__info">
+        <div class="status-badge status-badge--{{ monitor.status }}">
+          <span class="status-dot"></span>
+          {{ monitor.get_status_display }}
+        </div>
+        <h3 class="monitor-card__name">{{ monitor.name }}</h3>
+        <a href="{{ monitor.url }}" class="monitor-card__url" target="_blank" rel="noopener">
+          {{ monitor.url|truncatechars:45 }}
+          <span class="material-icons-round" style="font-size:14px;vertical-align:middle;">open_in_new</span>
+        </a>
+      </div>
+      <div class="monitor-card__actions">
+        <button class="icon-btn icon-btn--sm check-now-btn" data-id="{{ monitor.id }}" title="Check Now">
+          <span class="material-icons-round">refresh</span>
+        </button>
+        <a href="{% url 'monitor_edit' monitor.pk %}" class="icon-btn icon-btn--sm" title="Edit">
+          <span class="material-icons-round">edit</span>
+        </a>
+        <a href="{% url 'monitor_detail' monitor.pk %}" class="icon-btn icon-btn--sm" title="Details">
+          <span class="material-icons-round">open_in_full</span>
+        </a>
+      </div>
+    </div>
+
+    <div class="monitor-card__metrics">
+      <div class="metric">
+        <span class="metric__value" id="rt-{{ monitor.id }}">
+          {% if monitor.last_response_time %}{{ monitor.last_response_time|floatformat:0 }}ms{% else %}—{% endif %}
+        </span>
+        <span class="metric__label">Response</span>
+      </div>
+      <div class="metric">
+        <span class="metric__value uptime-value" id="up24-{{ monitor.id }}">{{ monitor.uptime_24h }}%</span>
+        <span class="metric__label">Uptime 24h</span>
+      </div>
+      <div class="metric">
+        <span class="metric__value" id="up7d-{{ monitor.id }}">{{ monitor.uptime_7d }}%</span>
+        <span class="metric__label">Uptime 7d</span>
+      </div>
+    </div>
+
+    <!-- Mini uptime bar -->
+    <div class="uptime-bar-container">
+      <div class="uptime-bar">
+        <div class="uptime-bar__fill uptime-bar__fill--{{ monitor.status }}"
+             style="width: {{ monitor.uptime_24h }}%"></div>
+      </div>
+      <span class="uptime-bar__label">
+        {% if monitor.last_checked %}
+          Checked {{ monitor.last_checked|timesince }} ago
+        {% else %}
+          Not checked yet
+        {% endif %}
+      </span>
+    </div>
+
+    <!-- Toggle active -->
+    <div class="monitor-card__footer">
+      <label class="toggle-switch" title="{% if monitor.is_active %}Pause monitoring{% else %}Resume monitoring{% endif %}">
+        <input type="checkbox" class="toggle-input" data-id="{{ monitor.id }}"
+               {% if monitor.is_active %}checked{% endif %} />
+        <span class="toggle-slider"></span>
+        <span class="toggle-label">{% if monitor.is_active %}Active{% else %}Paused{% endif %}</span>
+      </label>
+      <span class="check-type-badge">
+        <span class="material-icons-round" style="font-size:14px;">
+          {% if monitor.check_type == 'keyword' %}text_fields{% else %}http{% endif %}
+        </span>
+        {{ monitor.get_check_type_display }}
+      </span>
+    </div>
+  </div>
+  {% endfor %}
+</div>
+{% endif %}
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+const CSRF_TOKEN = '{{ csrf_token }}';
+
+// ── Load dashboard stats ──────────────────────────────────────────────────
+async function loadStats() {
+  try {
+    const res = await fetch('/api/stats/');
+    const data = await res.json();
+    document.getElementById('stat-total').textContent = data.total_monitors;
+    document.getElementById('stat-online').textContent = data.online_count;
+    document.getElementById('stat-offline').textContent = data.offline_count;
+    document.getElementById('stat-slow').textContent = data.slow_count;
+    document.getElementById('stat-uptime').textContent = data.overall_uptime + '%';
+    document.getElementById('stat-incidents').textContent = data.active_incidents;
+
+    // Update sidebar
+    document.getElementById('sb-online').textContent = data.online_count;
+    document.getElementById('sb-offline').textContent = data.offline_count;
+    document.getElementById('sb-slow').textContent = data.slow_count;
+  } catch (e) {
+    console.error('Failed to load stats:', e);
+  }
+}
+
+// ── Live status polling ───────────────────────────────────────────────────
+async function pollMonitors() {
+  try {
+    const res = await fetch('/api/monitors/');
+    const monitors = await res.json();
+    monitors.forEach(m => {
+      const card = document.querySelector(`.monitor-card[data-id="${m.id}"]`);
+      if (!card) return;
+
+      // Update status badge
+      const badge = card.querySelector('.status-badge');
+      if (badge) {
+        badge.className = `status-badge status-badge--${m.status}`;
+        badge.querySelector('.status-dot') && (badge.innerHTML = `<span class="status-dot"></span>${m.status.charAt(0).toUpperCase() + m.status.slice(1)}`);
+      }
+
+      // Update metrics
+      const rtEl = document.getElementById(`rt-${m.id}`);
+      if (rtEl) rtEl.textContent = m.last_response_time ? Math.round(m.last_response_time) + 'ms' : '—';
+
+      const up24El = document.getElementById(`up24-${m.id}`);
+      if (up24El) up24El.textContent = m.uptime_24h + '%';
+
+      const up7dEl = document.getElementById(`up7d-${m.id}`);
+      if (up7dEl) up7dEl.textContent = m.uptime_7d + '%';
+
+      // Update card data-status for filtering
+      card.dataset.status = m.status;
+    });
+  } catch (e) {
+    console.error('Poll failed:', e);
+  }
+}
+
+// ── Check Now ─────────────────────────────────────────────────────────────
+document.querySelectorAll('.check-now-btn').forEach(btn => {
+  btn.addEventListener('click', async () => {
+    const id = btn.dataset.id;
+    btn.querySelector('.material-icons-round').classList.add('spin');
+    try {
+      const res = await fetch(`/api/monitors/${id}/check-now/`, {
+        method: 'POST',
+        headers: { 'X-CSRFToken': CSRF_TOKEN, 'Content-Type': 'application/json' },
+      });
+      const data = await res.json();
+      showToast('Check queued for ' + data.monitor, 'success');
+      setTimeout(pollMonitors, 3000);
+    } catch (e) {
+      showToast('Failed to queue check', 'error');
+    } finally {
+      setTimeout(() => btn.querySelector('.material-icons-round').classList.remove('spin'), 1500);
+    }
+  });
+});
+
+// ── Toggle active ─────────────────────────────────────────────────────────
+document.querySelectorAll('.toggle-input').forEach(toggle => {
+  toggle.addEventListener('change', async () => {
+    const id = toggle.dataset.id;
+    try {
+      const res = await fetch(`/api/monitors/${id}/toggle/`, {
+        method: 'POST',
+        headers: { 'X-CSRFToken': CSRF_TOKEN, 'Content-Type': 'application/json' },
+      });
+      const data = await res.json();
+      const label = toggle.nextElementSibling.nextElementSibling;
+      if (label) label.textContent = data.is_active ? 'Active' : 'Paused';
+      showToast(`${data.name} ${data.is_active ? 'activated' : 'paused'}`, 'info');
+    } catch (e) {
+      toggle.checked = !toggle.checked;
+      showToast('Failed to toggle monitor', 'error');
+    }
+  });
+});
+
+// ── Search & Filter ───────────────────────────────────────────────────────
+const searchInput = document.getElementById('monitorSearch');
+const filterChips = document.querySelectorAll('.chip[data-filter]');
+let activeFilter = 'all';
+
+function applyFilters() {
+  const query = searchInput ? searchInput.value.toLowerCase() : '';
+  document.querySelectorAll('.monitor-card').forEach(card => {
+    const nameMatch = card.dataset.name.includes(query);
+    const statusMatch = activeFilter === 'all' || card.dataset.status === activeFilter;
+    card.style.display = nameMatch && statusMatch ? '' : 'none';
+  });
+}
+
+if (searchInput) searchInput.addEventListener('input', applyFilters);
+
+filterChips.forEach(chip => {
+  chip.addEventListener('click', () => {
+    filterChips.forEach(c => c.classList.remove('chip--active'));
+    chip.classList.add('chip--active');
+    activeFilter = chip.dataset.filter;
+    applyFilters();
+  });
+});
+
+// ── Init ──────────────────────────────────────────────────────────────────
+loadStats();
+setInterval(() => { loadStats(); pollMonitors(); }, 30000);
+</script>
+{% endblock %}

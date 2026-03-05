@@ -1,0 +1,6 @@
+django>=5.0
+djangorestframework>=3.14
+celery>=5.3
+redis>=5.0
+requests>=2.31
+django-celery-beat>=2.5

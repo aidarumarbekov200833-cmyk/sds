@@ -1,0 +1,149 @@
+{% extends "base.html" %}
+{% block title %}{{ title }} — UptimeWatch{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div class="page-header__back">
+    <a href="{% url 'dashboard' %}" class="back-link">
+      <span class="material-icons-round">arrow_back</span>
+      Dashboard
+    </a>
+    <h1 class="page-title">{{ title }}</h1>
+  </div>
+</div>
+
+<div class="form-container">
+  <div class="card">
+    <div class="card__header">
+      <h2 class="card__title">
+        <span class="material-icons-round">{% if monitor %}edit{% else %}add_circle_outline{% endif %}</span>
+        Monitor Configuration
+      </h2>
+    </div>
+    <div class="card__body">
+      <form method="post" class="monitor-form" id="monitorForm">
+        {% csrf_token %}
+
+        <div class="form-grid">
+          <!-- Name -->
+          <div class="form-field form-field--full">
+            <label class="form-label" for="{{ form.name.id_for_label }}">
+              <span class="material-icons-round">label</span>
+              Monitor Name *
+            </label>
+            {{ form.name }}
+            {% if form.name.errors %}
+            <div class="form-error">{{ form.name.errors.0 }}</div>
+            {% endif %}
+          </div>
+
+          <!-- URL -->
+          <div class="form-field form-field--full">
+            <label class="form-label" for="{{ form.url.id_for_label }}">
+              <span class="material-icons-round">link</span>
+              URL to Monitor *
+            </label>
+            {{ form.url }}
+            {% if form.url.errors %}
+            <div class="form-error">{{ form.url.errors.0 }}</div>
+            {% endif %}
+            <div class="form-hint">Include the full URL with protocol (https://)</div>
+          </div>
+
+          <!-- Check Type -->
+          <div class="form-field">
+            <label class="form-label" for="{{ form.check_type.id_for_label }}">
+              <span class="material-icons-round">rule</span>
+              Check Type
+            </label>
+            <div class="select-wrapper">
+              {{ form.check_type }}
+            </div>
+            {% if form.check_type.errors %}
+            <div class="form-error">{{ form.check_type.errors.0 }}</div>
+            {% endif %}
+          </div>
+
+          <!-- Keyword -->
+          <div class="form-field" id="keywordField">
+            <label class="form-label" for="{{ form.keyword.id_for_label }}">
+              <span class="material-icons-round">text_fields</span>
+              Keyword
+            </label>
+            {{ form.keyword }}
+            {% if form.keyword.errors %}
+            <div class="form-error">{{ form.keyword.errors.0 }}</div>
+            {% endif %}
+            <div class="form-hint">Required for keyword check type</div>
+          </div>
+
+          <!-- Check Interval -->
+          <div class="form-field">
+            <label class="form-label" for="{{ form.check_interval.id_for_label }}">
+              <span class="material-icons-round">schedule</span>
+              Check Interval (seconds)
+            </label>
+            {{ form.check_interval }}
+            {% if form.check_interval.errors %}
+            <div class="form-error">{{ form.check_interval.errors.0 }}</div>
+            {% endif %}
+            <div class="form-hint">{{ form.check_interval.help_text }}</div>
+          </div>
+
+          <!-- Timeout -->
+          <div class="form-field">
+            <label class="form-label" for="{{ form.timeout.id_for_label }}">
+              <span class="material-icons-round">timer</span>
+              Timeout (seconds)
+            </label>
+            {{ form.timeout }}
+            {% if form.timeout.errors %}
+            <div class="form-error">{{ form.timeout.errors.0 }}</div>
+            {% endif %}
+            <div class="form-hint">{{ form.timeout.help_text }}</div>
+          </div>
+        </div>
+
+        <!-- Info box -->
+        <div class="info-box">
+          <span class="material-icons-round">info</span>
+          <div>
+            <strong>HTTP Check:</strong> Verifies the site returns a 2xx/3xx status code.<br>
+            <strong>Keyword Check:</strong> Also verifies a specific keyword exists on the page.
+          </div>
+        </div>
+
+        <div class="form-actions">
+          <a href="{% if monitor %}{% url 'monitor_detail' monitor.pk %}{% else %}{% url 'dashboard' %}{% endif %}"
+             class="btn btn--outline">
+            Cancel
+          </a>
+          <button type="submit" class="btn btn--primary">
+            <span class="material-icons-round">save</span>
+            {% if monitor %}Save Changes{% else %}Create Monitor{% endif %}
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+// Show/hide keyword field based on check type
+const checkTypeSelect = document.querySelector('[name="check_type"]');
+const keywordField = document.getElementById('keywordField');
+
+function toggleKeywordField() {
+  if (checkTypeSelect && keywordField) {
+    keywordField.style.display = checkTypeSelect.value === 'keyword' ? '' : 'none';
+  }
+}
+
+if (checkTypeSelect) {
+  checkTypeSelect.addEventListener('change', toggleKeywordField);
+  toggleKeywordField();
+}
+</script>
+{% endblock %}

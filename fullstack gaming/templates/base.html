@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>{% block title %}Monitoring Service{% endblock %}</title>
+
+  <!-- Google Fonts: Inter + Material Icons -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/icon?family=Material+Icons+Round" rel="stylesheet" />
+
+  <!-- ApexCharts -->
+  <script src="https://cdn.jsdelivr.net/npm/apexcharts@3.44.0/dist/apexcharts.min.js"></script>
+
+  {% load static %}
+  <link rel="stylesheet" href="{% static 'css/main.css' %}" />
+
+  {% block extra_head %}{% endblock %}
+</head>
+<body>
+
+<!-- ── Top App Bar ─────────────────────────────────────────────────────── -->
+<header class="app-bar">
+  <div class="app-bar__inner">
+    <div class="app-bar__start">
+      <button class="icon-btn" id="sidebarToggle" aria-label="Toggle sidebar">
+        <span class="material-icons-round">menu</span>
+      </button>
+      <a href="{% url 'dashboard' %}" class="app-bar__brand">
+        <span class="material-icons-round brand-icon">monitor_heart</span>
+        <span class="brand-name">UptimeWatch</span>
+      </a>
+    </div>
+    <div class="app-bar__end">
+      <div class="live-indicator" id="liveIndicator">
+        <span class="live-dot"></span>
+        <span class="live-label">Live</span>
+      </div>
+      <a href="{% url 'status_page' %}" class="icon-btn" title="Public Status Page" target="_blank">
+        <span class="material-icons-round">public</span>
+      </a>
+      <a href="/admin/" class="icon-btn" title="Admin Panel">
+        <span class="material-icons-round">admin_panel_settings</span>
+      </a>
+    </div>
+  </div>
+</header>
+
+<!-- ── Layout ──────────────────────────────────────────────────────────── -->
+<div class="layout" id="layout">
+
+  <!-- Sidebar -->
+  <aside class="sidebar" id="sidebar">
+    <nav class="sidebar__nav">
+      <a href="{% url 'dashboard' %}" class="nav-item {% if request.resolver_match.url_name == 'dashboard' %}active{% endif %}">
+        <span class="material-icons-round">dashboard</span>
+        <span>Dashboard</span>
+      </a>
+      <a href="{% url 'monitor_create' %}" class="nav-item {% if request.resolver_match.url_name == 'monitor_create' %}active{% endif %}">
+        <span class="material-icons-round">add_circle_outline</span>
+        <span>Add Monitor</span>
+      </a>
+      <a href="{% url 'status_page' %}" class="nav-item {% if request.resolver_match.url_name == 'status_page' %}active{% endif %}">
+        <span class="material-icons-round">public</span>
+        <span>Status Page</span>
+      </a>
+      <div class="nav-divider"></div>
+      <a href="/admin/" class="nav-item">
+        <span class="material-icons-round">settings</span>
+        <span>Admin</span>
+      </a>
+    </nav>
+
+    <!-- Sidebar footer stats -->
+    <div class="sidebar__footer" id="sidebarStats">
+      <div class="sidebar-stat">
+        <span class="sidebar-stat__value" id="sb-online">—</span>
+        <span class="sidebar-stat__label">Online</span>
+      </div>
+      <div class="sidebar-stat">
+        <span class="sidebar-stat__value text-error" id="sb-offline">—</span>
+        <span class="sidebar-stat__label">Offline</span>
+      </div>
+      <div class="sidebar-stat">
+        <span class="sidebar-stat__value text-warning" id="sb-slow">—</span>
+        <span class="sidebar-stat__label">Slow</span>
+      </div>
+    </div>
+  </aside>
+
+  <!-- Main content -->
+  <main class="main-content">
+    <!-- Messages -->
+    {% if messages %}
+    <div class="messages-container">
+      {% for message in messages %}
+      <div class="alert-banner alert-banner--{{ message.tags }}">
+        <span class="material-icons-round">
+          {% if message.tags == 'success' %}check_circle{% elif message.tags == 'error' %}error{% else %}info{% endif %}
+        </span>
+        <span>{{ message }}</span>
+        <button class="alert-banner__close" onclick="this.parentElement.remove()">
+          <span class="material-icons-round">close</span>
+        </button>
+      </div>
+      {% endfor %}
+    </div>
+    {% endif %}
+
+    {% block content %}{% endblock %}
+  </main>
+</div>
+
+<!-- ── Toast Notification ──────────────────────────────────────────────── -->
+<div class="toast" id="toast">
+  <span class="material-icons-round" id="toastIcon">info</span>
+  <span id="toastMessage">Notification</span>
+</div>
+
+{% load static %}
+<script src="{% static 'js/main.js' %}"></script>
+{% block extra_scripts %}{% endblock %}
+</body>
+</html>

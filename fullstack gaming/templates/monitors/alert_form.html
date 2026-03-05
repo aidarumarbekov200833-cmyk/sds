@@ -1,0 +1,105 @@
+{% extends "base.html" %}
+{% block title %}Add Alert — UptimeWatch{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div class="page-header__back">
+    <a href="{% url 'monitor_detail' monitor.pk %}" class="back-link">
+      <span class="material-icons-round">arrow_back</span>
+      {{ monitor.name }}
+    </a>
+    <h1 class="page-title">Add Alert Channel</h1>
+  </div>
+</div>
+
+<div class="form-container">
+  <div class="card">
+    <div class="card__header">
+      <h2 class="card__title">
+        <span class="material-icons-round">notifications_active</span>
+        Configure Alert for {{ monitor.name }}
+      </h2>
+    </div>
+    <div class="card__body">
+      <form method="post" class="monitor-form">
+        {% csrf_token %}
+
+        <div class="form-grid">
+          <div class="form-field">
+            <label class="form-label" for="{{ form.alert_type.id_for_label }}">
+              <span class="material-icons-round">send</span>
+              Alert Channel
+            </label>
+            <div class="select-wrapper">
+              {{ form.alert_type }}
+            </div>
+            {% if form.alert_type.errors %}
+            <div class="form-error">{{ form.alert_type.errors.0 }}</div>
+            {% endif %}
+          </div>
+
+          <div class="form-field">
+            <label class="form-label" for="{{ form.target.id_for_label }}">
+              <span class="material-icons-round">alternate_email</span>
+              {{ form.target.label }}
+            </label>
+            {{ form.target }}
+            {% if form.target.errors %}
+            <div class="form-error">{{ form.target.errors.0 }}</div>
+            {% endif %}
+            <div class="form-hint" id="targetHint">Enter email address or Telegram chat ID</div>
+          </div>
+
+          <div class="form-field form-field--full">
+            <label class="toggle-switch">
+              {{ form.is_enabled }}
+              <span class="toggle-slider"></span>
+              <span class="toggle-label">Enable this alert</span>
+            </label>
+          </div>
+        </div>
+
+        <div class="info-box info-box--warning">
+          <span class="material-icons-round">info</span>
+          <div>
+            <strong>Note:</strong> This is a simulation. In production, configure your email SMTP settings
+            or Telegram Bot API token in the Django settings to send real notifications.
+          </div>
+        </div>
+
+        <div class="form-actions">
+          <a href="{% url 'monitor_detail' monitor.pk %}" class="btn btn--outline">Cancel</a>
+          <button type="submit" class="btn btn--primary">
+            <span class="material-icons-round">save</span>
+            Save Alert
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+const alertTypeSelect = document.querySelector('[name="alert_type"]');
+const targetHint = document.getElementById('targetHint');
+const targetInput = document.querySelector('[name="target"]');
+
+function updateHint() {
+  if (!alertTypeSelect) return;
+  if (alertTypeSelect.value === 'telegram') {
+    if (targetHint) targetHint.textContent = 'Enter your Telegram chat ID (e.g., -1001234567890)';
+    if (targetInput) targetInput.placeholder = 'Telegram Chat ID';
+  } else {
+    if (targetHint) targetHint.textContent = 'Enter the email address to receive alerts';
+    if (targetInput) targetInput.placeholder = 'email@example.com';
+  }
+}
+
+if (alertTypeSelect) {
+  alertTypeSelect.addEventListener('change', updateHint);
+  updateHint();
+}
+</script>
+{% endblock %}

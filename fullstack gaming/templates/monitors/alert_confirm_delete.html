@@ -1,0 +1,50 @@
+{% extends "base.html" %}
+{% block title %}Delete Alert — UptimeWatch{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div class="page-header__back">
+    <a href="{% url 'monitor_detail' alert.monitor.pk %}" class="back-link">
+      <span class="material-icons-round">arrow_back</span>
+      {{ alert.monitor.name }}
+    </a>
+    <h1 class="page-title">Delete Alert</h1>
+  </div>
+</div>
+
+<div class="form-container form-container--sm">
+  <div class="card card--danger">
+    <div class="card__header">
+      <h2 class="card__title card__title--danger">
+        <span class="material-icons-round">warning</span>
+        Confirm Alert Deletion
+      </h2>
+    </div>
+    <div class="card__body">
+      <div class="danger-zone">
+        <p>You are about to delete the alert channel:</p>
+        <div class="danger-zone__target">
+          <strong>{{ alert.get_alert_type_display }}</strong> → {{ alert.target }}
+        </div>
+        <p class="danger-zone__warning">
+          <span class="material-icons-round">error_outline</span>
+          This alert will no longer send notifications when {{ alert.monitor.name }} goes down.
+        </p>
+      </div>
+      <div class="form-actions">
+        <a href="{% url 'monitor_detail' alert.monitor.pk %}" class="btn btn--outline">
+          <span class="material-icons-round">cancel</span>
+          Cancel
+        </a>
+        <form method="post" style="display:inline;">
+          {% csrf_token %}
+          <button type="submit" class="btn btn--danger">
+            <span class="material-icons-round">delete_forever</span>
+            Delete Alert
+          </button>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
